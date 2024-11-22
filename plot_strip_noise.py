@@ -17,10 +17,6 @@ storage_path = Path(sys.argv[3] if len(sys.argv) > 3 else '/Users/andresf/cernbo
 destination_folder = Path(storage_path, module_name)
 histname = 'Detector/Board_0/OpticalGroup_0/Hybrid_XX/D_B(0)_O(0)_HybridStripNoiseDistribution_Hybrid(XX)'
 
-# filename = Path('~/Hybrid_PS_26_05_BRN-00102.root')
-# destination_folder = Path('/Users/andresf/cernbox/www')
-# histname = 'Detector/Board_0/OpticalGroup_0/Hybrid_XX/D_B(0)_O(0)_HybridStripNoiseDistribution_Hybrid(XX)'
-
 def zscore(df, window, thresh=3, return_all=False):
     roll = df.rolling(window=window, min_periods=1, center=True)
     avg = roll.mean()
