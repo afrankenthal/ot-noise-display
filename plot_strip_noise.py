@@ -12,7 +12,7 @@ import shutil
 # invocation: python plot_strip_noise.py module_name [path_to_filename.root] [storage_path]
 
 window = 40 # moving average
-thresh = 3.5 # num. sigmas
+thresh = 3.0 # num. sigmas
 
 module_name = sys.argv[1]
 filename = Path(sys.argv[2] if len(sys.argv) > 2 else f'~/Hybrid_{module_name}.root')
@@ -26,6 +26,11 @@ def daq_to_sensor_mapping(hybrid, orientation='princeton'):
             return np.arange(1, 961)
         elif hybrid == 0: # right
             return np.arange(1920, 960, -1)
+    elif orientation == 'fermilab':
+        if hybrid == 1: # left
+            return np.arange(1920, 960, -1)
+        elif hybrid == 0: # right
+            return np.arange(960, 1, -1)
 
 def zscore(df, window, thresh=3, return_all=False):
     roll = df.rolling(window=window, min_periods=1, center=True)
@@ -58,8 +63,8 @@ def make_noise_plot(ax, data, module, hybrid):
     avg.plot(ax=ax, label=f'Mean ($\\overline{{n}}$ = {window})', color='orange')
     df['noise'].loc[~m].plot(ax=ax, label=f'Outliers ($\\sigma = 3$)', yerr=df['variance'].loc[~m], marker='o', ls='', color='r')
 
-    for chan, noise in zip(df['noise'].loc[~m].index, df['noise'].loc[~m].values):
-        ax.text(chan+20, noise, str(chan), color='r')
+    for idx, (chan, noise) in enumerate(zip(df['noise'].loc[~m].index, df['noise'].loc[~m].values)):
+        ax.text(chan+10, noise + 0.5 - 1.0*(idx % 2), str(int(chan)), color='r')
 
     ax.text(0.5, 0.93, module, size=12, fontweight='bold', horizontalalignment='center', transform=ax.transAxes)
     ax.text(0.5, 0.85, f"{'Right' if hybrid==0 else 'Left'} hybrid ({hybrid})", fontweight='bold', horizontalalignment='center', size=11, transform=ax.transAxes)
