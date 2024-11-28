@@ -12,13 +12,20 @@ import shutil
 # invocation: python plot_strip_noise.py module_name [path_to_filename.root] [storage_path]
 
 window = 40 # moving average
-thresh = 3 # num. sigmas
+thresh = 3.5 # num. sigmas
 
 module_name = sys.argv[1]
 filename = Path(sys.argv[2] if len(sys.argv) > 2 else f'~/Hybrid_{module_name}.root')
 storage_path = Path(sys.argv[3] if len(sys.argv) > 3 else '/home/phase2ot/cernbox/www')
 destination_folder = Path(storage_path, module_name)
 histname = 'Detector/Board_0/OpticalGroup_0/Hybrid_XX/D_B(0)_O(0)_HybridStripNoiseDistribution_Hybrid(XX)'
+
+def daq_to_sensor_mapping(hybrid, orientation='princeton'):
+    if orientation == 'princeton':
+        if hybrid == 1: # left
+            return np.arange(1, 961)
+        elif hybrid == 0: # right
+            return np.arange(1920, 960, -1)
 
 def zscore(df, window, thresh=3, return_all=False):
     roll = df.rolling(window=window, min_periods=1, center=True)
@@ -32,13 +39,21 @@ def zscore(df, window, thresh=3, return_all=False):
     return df.where(m, avg)
 
 def make_noise_plot(ax, data, module, hybrid):
+    x_vals = daq_to_sensor_mapping(hybrid)
+    y_vals = data.values()
+    y_errs = data.variances()
+    x_errs = data.variances()
+
     ax.set_xlabel('Sensor number')
     ax.set_ylabel('Noise [ThDAC]')
     max_val = np.max(data.values())
     ax.set_ylim([0, max_val*1.7])
-    mplhep.histplot(data, ax=ax, yerr=data.variances(), histtype='errorbar', marker=None, color='g', label='Data')
+    ax.errorbar(x_vals, y_vals, yerr=y_errs, xerr=x_errs, color='g', zorder=1, label='Data', maker=None, lw=1)
+    # mplhep.histplot(data, ax=ax, yerr=data.variances(), histtype='errorbar', marker=None, color='g', label='Data')
 
-    df = pd.DataFrame(np.transpose([data.values(), data.variances()]), columns=['noise', 'variance'])
+    df = pd.DataFrame(np.transpose([daq_to_sensor_mapping(hybrid), data.values(), data.variances()]), columns=['channel', 'noise', 'variance'])
+    df = df.set_index('channel')
+    # df = pd.DataFrame(np.transpose([data.values(), data.variances()]), columns=['noise', 'variance'])
     z, avg, std, m = zscore(df['noise'], window=window, thresh=thresh, return_all=True)
     avg.plot(ax=ax, label=f'Mean ($\\overline{{n}}$ = {window})', color='orange')
     df['noise'].loc[~m].plot(ax=ax, label=f'Outliers ($\\sigma = 3$)', yerr=df['variance'].loc[~m], marker='o', ls='', color='r')
