@@ -9,11 +9,14 @@ from pathlib import Path
 import sys
 import shutil
 
-# invocation: python plot_strip_noise.py module_name [path_to_filename.root] [output_dir]
+# invocation: python plot_strip_noise.py module_name [path_to_filename.root] [storage_path]
+
+window = 40 # moving average
+thresh = 3 # num. sigmas
 
 module_name = sys.argv[1]
 filename = Path(sys.argv[2] if len(sys.argv) > 2 else f'~/Hybrid_{module_name}.root')
-storage_path = Path(sys.argv[3] if len(sys.argv) > 3 else '/Users/andresf/cernbox/www')
+storage_path = Path(sys.argv[3] if len(sys.argv) > 3 else '/home/phase2ot/cernbox/www')
 destination_folder = Path(storage_path, module_name)
 histname = 'Detector/Board_0/OpticalGroup_0/Hybrid_XX/D_B(0)_O(0)_HybridStripNoiseDistribution_Hybrid(XX)'
 
@@ -35,8 +38,6 @@ def make_noise_plot(ax, data, module, hybrid):
     ax.set_ylim([0, max_val*1.7])
     mplhep.histplot(data, ax=ax, yerr=data.variances(), histtype='errorbar', marker=None, color='g', label='Data')
 
-    window = 20 # moving average
-    thresh = 3 # num. sigmas
     df = pd.DataFrame(np.transpose([data.values(), data.variances()]), columns=['noise', 'variance'])
     z, avg, std, m = zscore(df['noise'], window=window, thresh=thresh, return_all=True)
     avg.plot(ax=ax, label=f'Mean ($\\overline{{n}}$ = {window})', color='orange')
@@ -60,8 +61,8 @@ with uproot.open(filename) as f:
     hist_hybrid_1 = f[histname.replace('XX', '1')].to_hist()
 
 # Create artificial broken wirebonds
-hist_hybrid_1[450] = [8.0, 1]
-hist_hybrid_0[300] = [7.0, 1]
+#hist_hybrid_1[450] = [8.0, 1]
+#hist_hybrid_0[300] = [7.0, 1]
 
 fig0, ax0 = plt.subplots(figsize=(10,5))
 fig1, ax1 = plt.subplots(figsize=(10,5))
@@ -72,8 +73,14 @@ make_noise_plot(ax1, hist_hybrid_1, filename.stem, 1)
 
 Path(destination_folder, filename.stem).mkdir(parents=True, exist_ok=True)
 # Copy index.php to destination folders (overwrite ok if already exists)
-shutil.copy(Path(storage_path, 'index.php'), Path(destination_folder))
-shutil.copy(Path(storage_path, 'index.php'), Path(destination_folder, filename.stem))
+try:
+    shutil.copy(Path(storage_path, 'index.php'), Path(destination_folder))
+except IOError:
+    print(f'Unable to copy file index.php')
+try:
+    shutil.copy(Path(storage_path, 'index.php'), Path(destination_folder, filename.stem))
+except IOError:
+    print(f'Unable to copy file index.php')
 
 print('Outputting plots to path', Path(destination_folder, filename.stem))
 fig0.savefig(Path(destination_folder, filename.stem, 'Hybrid0.png'))
